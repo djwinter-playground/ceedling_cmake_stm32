@@ -1,0 +1,9 @@
+[submodule "library/ST/stm32h7xx_hal_driver"]
+	path = library/ST/stm32h7xx_hal_driver
+	url = https://github.com/STMicroelectronics/stm32f4xx-hal-driver.git
+[submodule "library/ST/stm32f4xx_cmsis_device"]
+	path = library/ST/stm32f4xx_cmsis_device
+	url = https://github.com/STMicroelectronics/cmsis-device-f4.git
+[submodule "library/ARM/cmsis_core"]
+	path = library/ARM/cmsis_core
+	url = https://github.com/STMicroelectronics/cmsis_core.git
