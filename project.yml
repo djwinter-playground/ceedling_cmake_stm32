@@ -1,118 +1,100 @@
-# Ceedling configuration to run unit testing with code coverage using GCC compiler and the 
-# STM32CubeG0 library, user only has to type make test target from the makefile to run
-# all the unit test cases written on files in folder test 
+
+# Notes:
+# Sample project C code is not presently written to produce a release artifact.
+# As such, release build options are disabled.
+# This sample, therefore, only demonstrates running a collection of unit tests.
+
 :project:
-  :build_root: Build/ceedling/       # Directory where ceedling will place its output
+  :use_exceptions: FALSE
   :use_test_preprocessor: TRUE
   :use_auxiliary_dependencies: TRUE
+  :build_root: build
+#  :release_build: TRUE
   :test_file_prefix: test_
+  :which_ceedling: gem
+  :ceedling_version: 0.31.1
+  :default_tasks:
+    - test:all
 
+#:test_build:
+#  :use_assembly: TRUE
 
-# Project paths for test and source and header files
+#:release_build:
+#  :output: MyApp.out
+#  :use_assembly: FALSE
+
+:environment:
+
+:extension:
+  :executable: .elf
+
 :paths:
   :test:
-    - test/**           # directory where the unit testing are
+    - +:tests/**
+    - -:tests/support
   :source:
-    - app/**            # directory where the functions to test are
-    - halg0/Src         # HAL library source files
-    - cmsisg0/startups  # HAL library system source file
-  :include:
-    - halg0/Inc         # HAL library include files
-    - cmsisg0/core      # HAL library CPU definitions in header files
-    - cmsisg0/registers # HAL library register definition files
+    - src/**
+  :support:
+    - tests/support
+  :libraries: []
 
-
-# Global defines applicable only when you run the code using ceedling
 :defines:
+  # in order to add common defines:
+  #  1) remove the trailing [] from the :common: section
+  #  2) add entries to the :common: section (e.g. :test: has TEST defined)
+  :common: &common_defines []
   :test:
-    - UTEST           # define the macro UTEST to remove the static qualifier
-    - STM32G0B1xx     # HAL library microcontroller in use
-    - USE_HAL_DRIVER  # HAL library to active HAL driver func tions
+    - *common_defines
+    - TEST
+  :test_preprocess:
+    - *common_defines
+    - TEST
 
+:cmock:
+  :mock_prefix: mock_
+  :when_no_prototypes: :warn
+  :enforce_strict_ordering: TRUE
+  :plugins:
+    - :ignore
+    - :callback
+  :treat_as:
+    uint8:    HEX8
+    uint16:   HEX16
+    uint32:   UINT32
+    int8:     INT8
+    bool:     UINT8
 
-# Plugins to add extra fcuntionality to ceedling, like code coverage and pretty reports
-:plugins: 
+# Add -gcov to the plugins list to make sure of the gcov plugin
+# You will need to have gcov and gcovr both installed to make it work.
+# For more information on these options, see docs in plugins/gcov
+:gcov:
+  :reports:
+    - HtmlDetailed
+  :gcovr:
+    :html_medium_threshold: 75
+    :html_high_threshold: 90
+
+#:tools:
+# Ceedling defaults to using gcc for compiling, linking, etc.
+# As [:tools] is blank, gcc will be used (so long as it's in your system path)
+# See documentation to configure a given toolchain for use
+
+# LIBRARIES
+# These libraries are automatically injected into the build process. Those specified as
+# common will be used in all types of builds. Otherwise, libraries can be injected in just
+# tests or releases. These options are MERGED with the options in supplemental yaml files.
+:libraries:
+  :placement: :end
+  :flag: "-l${1}"
+  :path_flag: "-L ${1}"
+  :system: []    # for example, you might list 'm' to grab the math library
+  :test: []
+  :release: []
+
+:plugins:
   :load_paths:
     - "#{Ceedling.load_path}"
   :enabled:
-    - stdout_pretty_tests_report  # Display test cases result in a better way
-    - gcov                        # Code coverage
-
-
-# enable and configure code coverage
-:gcov:
-  :abort_on_uncovered: true   # Stop if a file under test has not been tested
-  :utilities:
-    - gcovr                   # gcovr for report generation
-  :reports:
-    - HtmlDetailed            # genarate a detail report of each file in  HTML
-  :uncovered_ignore_list:
-    - halg0/**                # Ignore files in HAL library
-    - cmsisg0/**              # Ignore files in HAL library
-    - app/main.c              # Ignore main file (renmove from here ig needed)
-    - app/ints.c              # Do not test interrupt vectors
-    - app/msps.c              # Do not test extra initlization functions
-
-
-# Configure the mock generator
-:cmock:
-  :mock_prefix: mock_         # Generate mock version using mock prefix
-  :treat_externs: :include
-  :when_no_prototypes: :warn
-  :enforce_strict_ordering: TRUE
-  :includes:
-    - stm32g0xx.h             # Include by default this header on each mock file
-  :strippables:              # Add here all fucntions you do not want to be mocked
-    - '(?:HAL_GPIO_EXTI_Rising_Callback\s*\(+.*?\)+)'     # For instance the callback functions
-    - '(?:HAL_GPIO_EXTI_Falling_Callback\s*\(+.*?\)+)'    # For instance the callback functions
-  :plugins:
-    - :ignore                 # Generate <function>_Ignore and <function>_IgnoreAndReturn
-    - :ignore_arg             # Generate <function>_IgnoreArg_<param_name>
-    - :expect_any_args        # Generate <function>_func_ExpectAnyArgs and <function>_func_ExpectAnyArgsAndReturn
-    - :array                  # Generate <function>_ExpectWithArray and <function>_ExpectWithArrayAndReturn
-    - :callback               # Generate <function>_ 
-    - :return_thru_ptr        # Generate <function>_ReturnArrayThruPtr_<param_name> and <function>_ReturnMemThruPtr_<param_name>
-
-
-# extra flags to add to default compiler GCC whe run commands ceedling test:all and ceedling gcov:all
-# these flags are the same written in the makefile used to build the project plus three extra flags
-# for some reason are needed by GCC to avoid cast warnings in HAL library
-:flags:
-  :test:        # flags when GCC runs with ceedling test:all
-    :compile:
-      :*:
-        - -O0
-        - -ffunction-sections
-        - -fdata-sections
-        - -fno-builtin
-        - -std=c11
-        - -pedantic
-        - -Wall
-        - -Werror
-        - -Wstrict-prototypes
-        - -fsigned-char
-        - -fomit-frame-pointer
-        - -fverbose-asm
-        # Extra flags to avoid cast warnings in the HAL library
-        - -Wno-int-to-pointer-cast 
-        - -Wno-pointer-to-int-cast
-        - -Wno-error=address
-  :gcov:        # flags when GCC runs with ceedling gcov:all
-    :compile:
-      :*:
-        - -O0
-        - -ffunction-sections
-        - -fdata-sections
-        - -fno-builtin
-        - -std=c11
-        - -pedantic
-        - -Wall
-        - -Werror
-        - -Wstrict-prototypes
-        - -fsigned-char
-        - -fomit-frame-pointer
-        - -fverbose-asm
-        # Extra flags to avoid cast warnings in the HAL library
-        - -Wno-int-to-pointer-cast 
-        - -Wno-pointer-to-int-cast
-        - -Wno-error=address
+    - stdout_pretty_tests_report
+    - module_generator
+    - gcov
